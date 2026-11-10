@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # El CI corre el mismo gate que local, no una copia paralela.
+      # verificar.sh detecta un proyecto recien creado (sin package.json o sin
+      # script de pruebas) y lo reporta como SIN_SUITE sin marcar el CI en rojo.
+      # Cuando el proyecto ya tiene pruebas, exige que corra al menos una y que
+      # ninguna falle.
+      - name: Verificar
+        run: sh verificar.sh
+
+      # Se omite mientras el proyecto no tenga codigo, para no fallar por una
+      # carpeta vacia en el primer push de la estructura.
+      - name: Verificacion de sintaxis
+        if: hashFiles('src/**/*.js') != ''
+        run: find src -name '*.js' -print0 | xargs -0 -r -n1 node --check
