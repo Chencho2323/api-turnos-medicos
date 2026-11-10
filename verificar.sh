@@ -30,9 +30,12 @@ SALIDA="$(npm test --silent 2>&1)" || {
 echo "$SALIDA"
 
 # Node 24 reporta el resumen con dos formatos: '# pass N' en el reporter TAP
-# y 'ℹ pass N' en el reporter por defecto. Se acepta cualquiera de los dos.
-PASARON="$(printf '%s\n' "$SALIDA" | grep -E '^[^[:alpha:]]*pass [0-9]+' | tail -1 | grep -oE '[0-9]+' | head -1)"
-FALLARON="$(printf '%s\n' "$SALIDA" | grep -E '^[^[:alpha:]]*fail [0-9]+' | tail -1 | grep -oE '[0-9]+' | head -1)"
+# y 'i pass N' (con un simbolo delante) en el reporter por defecto. Se busca
+# solo el texto "pass N" / "fail N" para no depender del locale: con LC_ALL
+# en UTF-8, un rango negado como [^[:alpha:]] no siempre consume el simbolo
+# multibyte que imprime el reporter y la linea no coincide.
+PASARON="$(printf '%s\n' "$SALIDA" | grep -oE 'pass [0-9]+' | tail -1 | grep -oE '[0-9]+')"
+FALLARON="$(printf '%s\n' "$SALIDA" | grep -oE 'fail [0-9]+' | tail -1 | grep -oE '[0-9]+')"
 
 if [ -z "$PASARON" ]; then
   echo "ERROR: no se pudo leer el resumen de las pruebas." >&2
