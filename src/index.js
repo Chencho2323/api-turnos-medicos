@@ -9,5 +9,7 @@
  */
 
 const tiempo = require('./tiempo');
+const base = require('./base');
+const esquema = require('./esquema');
 
-module.exports = { ...tiempo };
+module.exports = { ...tiempo, ...base, ...esquema };
