@@ -33,6 +33,42 @@ La aplicacion expone su funcionalidad por linea de comandos o por HTTP, segun
 el caso. Los ejemplos concretos estan en `docs/` o en el `README` ampliado de
 cada version.
 
+## Disponibilidad
+
+La agenda no guarda cupos: los calcula. Sobre el horario semanal del
+profesional se descuentan los bloqueos y las citas vivas, y lo que sobra se
+parte en cupos de la duracion pedida.
+
+```js
+const { abrirBase, cuposDisponibles, verificarCupo } = require('./src');
+
+const base = abrirBase('agenda.db');
+
+// Cupos de 30 minutos para el lunes 9 de noviembre de 2026.
+const cupos = cuposDisponibles(base, {
+  profesionalId: 1,
+  fecha: '2026-11-09',
+  duracionMinutos: 30,
+});
+
+// Antes de reservar: veredicto y motivo en texto.
+const veredicto = verificarCupo(base, {
+  profesionalId: 1,
+  fecha: '2026-11-09',
+  horaInicio: '09:30',
+  horaFin: '10:00',
+});
+```
+
+Reglas que aplica el nucleo:
+
+- Un cupo tiene que caber entero dentro de una franja de atencion.
+- Dos intervalos que se tocan no se solapan; solo cuenta el cruce real.
+- Las citas canceladas no ocupan cupo, para no perder el historico.
+- La duracion va de 5 minutos a 12 horas.
+- Al reprogramar se pasa `excluirCitaId` para que la propia cita no se
+  estorbe.
+
 ## Pruebas
 
 ```bash
