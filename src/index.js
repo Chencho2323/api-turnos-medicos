@@ -12,5 +12,6 @@ const tiempo = require('./tiempo');
 const base = require('./base');
 const esquema = require('./esquema');
 const disponibilidad = require('./disponibilidad');
+const citas = require('./citas');
 
-module.exports = { ...tiempo, ...base, ...esquema, ...disponibilidad };
+module.exports = { ...tiempo, ...base, ...esquema, ...disponibilidad, ...citas };

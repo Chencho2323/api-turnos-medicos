@@ -69,6 +69,43 @@ Reglas que aplica el nucleo:
 - Al reprogramar se pasa `excluirCitaId` para que la propia cita no se
   estorbe.
 
+## Citas
+
+Reservar, mover y cancelar pasa por el mismo control de cupo: si el nucleo
+dice que no, la cita no se escribe.
+
+```js
+const { crearCita, reprogramarCita, cancelarCita } = require('./src');
+
+const cita = crearCita(base, {
+  profesionalId: 1,
+  pacienteId: 7,
+  fecha: '2026-11-09',
+  horaInicio: '09:30',
+  horaFin: '10:00',
+  motivo: 'Control de rutina',
+});
+
+// Mismo profesional y paciente, otro horario.
+reprogramarCita(base, cita.id, {
+  fecha: '2026-11-09',
+  horaInicio: '11:00',
+  horaFin: '11:30',
+});
+
+// Cancelar no borra: el estado pasa a cancelada y el cupo queda libre.
+const cancelada = cancelarCita(base, cita.id, { motivo: 'El paciente no puede' });
+```
+
+Reglas que aplica el ciclo de la cita:
+
+- El codigo es `C-AAAAMMDD-NNNN`, consecutivo por dia.
+- Solo se reprograma o se cancela una cita pendiente o confirmada.
+- Cancelar dos veces, o cancelar una cita atendida, se rechaza con un error
+  de negocio.
+- Los errores de negocio salen como `ErrorAgenda`, con `codigo` y el estado
+  HTTP sugerido en `estado`.
+
 ## Pruebas
 
 ```bash
