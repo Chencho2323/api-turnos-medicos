@@ -47,9 +47,17 @@ function insertarCita(base, datos) {
     );
 }
 
-test('el esquema crea las cinco tablas del negocio', () => {
+test('el esquema crea las tablas del negocio', () => {
   const base = baseDePrueba();
-  assert.deepEqual(tablas(base), ['bloque', 'cita', 'horario', 'paciente', 'profesional']);
+  assert.deepEqual(tablas(base), [
+    'bloque',
+    'cita',
+    'horario',
+    'paciente',
+    'profesional',
+    'recordatorio',
+    'salida',
+  ]);
   assert.equal(versionEsquema(base), VERSION_ESQUEMA);
   base.close();
 });
@@ -63,7 +71,7 @@ test('abrir dos veces sobre el mismo archivo no falla ni duplica tablas', () => 
   primera.close();
 
   const segunda = abrirBase(ruta);
-  assert.equal(tablas(segunda).length, 5);
+  assert.equal(tablas(segunda).length, 7);
   assert.equal(segunda.prepare('SELECT count(*) AS n FROM profesional').get().n, 1);
   segunda.close();
 

@@ -106,6 +106,40 @@ Reglas que aplica el ciclo de la cita:
 - Los errores de negocio salen como `ErrorAgenda`, con `codigo` y el estado
   HTTP sugerido en `estado`.
 
+## Recordatorios y cola de salida
+
+Un recordatorio cuelga de una cita viva y guarda cuando hay que avisar, por que
+canal y con que texto. El aviso no se envia desde la agenda: al llegar su hora
+pasa a una cola de salida que otro proceso consume. Asi un canal caido no
+tumba una reserva.
+
+```js
+const { programarRecordatorio, encolarVencidos, tomarLote, marcarEnviada } = require('./src');
+
+// Un dia antes de la cita, por WhatsApp, al telefono del paciente.
+const aviso = programarRecordatorio(base, { citaId: cita.id });
+
+// Al llegar la hora, lo vencido entra a la cola.
+const salidas = encolarVencidos(base);
+
+// El entregador toma el lote, lo envia y marca el resultado.
+for (const salida of tomarLote(base, { limite: 20 })) {
+  marcarEnviada(base, salida.id);
+}
+```
+
+Reglas que aplica:
+
+- Antelaciones: un dia, tres horas, una hora o media hora
+  (`ANTELACIONES`); por defecto un dia.
+- Canales: WhatsApp, SMS, correo y llamada. El destinatario sale del telefono
+  o del correo del paciente, segun el canal, y se puede pasar explicito.
+- Cancelar o reprogramar una cita apaga sus avisos pendientes: un mensaje
+  sobre un horario que ya no existe no sale.
+- Una salida fallida vuelve a la cola hasta tres intentos (`INTENTOS_MAXIMOS`)
+  y despues queda `fallido` para revisarla a mano con `reintentarSalida`.
+- `estadoDeLaCola(base)` devuelve el conteo por estado.
+
 ## Pruebas
 
 ```bash

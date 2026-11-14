@@ -17,7 +17,7 @@
  * consultas de solapamiento se resuelven sin convertir nada.
  */
 
-const VERSION_ESQUEMA = 1;
+const VERSION_ESQUEMA = 2;
 
 /**
  * Condicion que valida una columna de hora en formato HH:MM de 00:00 a 23:59.
@@ -143,6 +143,56 @@ WHEN NEW.actualizada_en = OLD.actualizada_en
 BEGIN
   UPDATE cita SET actualizada_en = ${AHORA} WHERE id = OLD.id;
 END;
+
+-- Recordatorio de una cita: cuando hay que avisar, por que canal y a quien.
+-- El momento del aviso se guarda como fecha y hora sueltas, igual que la cita,
+-- para que la comparacion por texto siga sirviendo.
+CREATE TABLE IF NOT EXISTS recordatorio (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  cita_id        INTEGER NOT NULL REFERENCES cita (id) ON DELETE CASCADE,
+  canal          TEXT NOT NULL CHECK (
+                   canal IN ('whatsapp', 'sms', 'correo', 'llamada')
+                 ),
+  destinatario   TEXT NOT NULL,
+  fecha_aviso    TEXT NOT NULL CHECK (${fechaValida('fecha_aviso')}),
+  hora_aviso     TEXT NOT NULL CHECK (${horaValida('hora_aviso')}),
+  mensaje        TEXT NOT NULL,
+  estado         TEXT NOT NULL DEFAULT 'pendiente' CHECK (
+                   estado IN ('pendiente', 'en_cola', 'enviado', 'fallido', 'cancelado')
+                 ),
+  creado_en      TEXT NOT NULL DEFAULT (${AHORA}),
+  actualizado_en TEXT NOT NULL DEFAULT (${AHORA}),
+  CHECK (length(trim(destinatario)) > 0),
+  CHECK (length(trim(mensaje)) > 0),
+  UNIQUE (cita_id, canal, fecha_aviso, hora_aviso)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recordatorio_vencimiento
+  ON recordatorio (estado, fecha_aviso, hora_aviso);
+
+CREATE INDEX IF NOT EXISTS idx_recordatorio_cita
+  ON recordatorio (cita_id, estado);
+
+-- Cola de salida. El recordatorio no se entrega desde la agenda: se encola
+-- aqui y un proceso aparte toma el lote, lo entrega y marca el resultado. Asi
+-- la reserva nunca depende de que el canal este disponible en ese instante.
+CREATE TABLE IF NOT EXISTS salida (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  recordatorio_id INTEGER NOT NULL UNIQUE REFERENCES recordatorio (id) ON DELETE CASCADE,
+  canal           TEXT NOT NULL,
+  destinatario    TEXT NOT NULL,
+  cuerpo          TEXT NOT NULL,
+  estado          TEXT NOT NULL DEFAULT 'en_cola' CHECK (
+                    estado IN ('en_cola', 'enviando', 'enviado', 'fallido', 'cancelado')
+                  ),
+  intentos        INTEGER NOT NULL DEFAULT 0 CHECK (intentos >= 0),
+  ultimo_error    TEXT,
+  creado_en       TEXT NOT NULL DEFAULT (${AHORA}),
+  enviado_en      TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_salida_pendiente
+  ON salida (estado, id);
 `;
 
 module.exports = { ESQUEMA, VERSION_ESQUEMA, horaValida, fechaValida };

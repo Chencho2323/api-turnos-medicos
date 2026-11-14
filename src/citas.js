@@ -295,7 +295,40 @@ function reprogramarCita(base, citaId, datos) {
     )
     .run(datos.fecha, datos.horaInicio, datos.horaFin, motivo, cita.id);
 
+  // Los avisos calculados sobre el horario viejo ya no sirven: se apagan y se
+  // vuelven a programar sobre el horario nuevo.
+  apagarAvisos(base, cita.id);
+
   return obtenerCita(base, cita.id);
+}
+
+/**
+ * Apaga los avisos de una cita que dejo de estar viva.
+ *
+ * Se hace con SQL directo en vez de llamar a recordatorios.js para no cerrar
+ * un ciclo de require entre los dos modulos: citas.js es la base y
+ * recordatorios.js ya depende de el.
+ * @param {import('node:sqlite').DatabaseSync} base
+ * @param {number} citaId
+ */
+function apagarAvisos(base, citaId) {
+  base
+    .prepare(
+      `UPDATE recordatorio
+          SET estado = 'cancelado',
+              actualizado_en = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE cita_id = ?
+          AND estado NOT IN ('enviado', 'cancelado')`,
+    )
+    .run(citaId);
+  base
+    .prepare(
+      `UPDATE salida
+          SET estado = 'cancelado'
+        WHERE estado IN ('en_cola', 'enviando')
+          AND recordatorio_id IN (SELECT id FROM recordatorio WHERE cita_id = ?)`,
+    )
+    .run(citaId);
 }
 
 /**
@@ -333,6 +366,8 @@ function cancelarCita(base, citaId, opciones = {}) {
     )
     .run(motivo, cita.id);
 
+  apagarAvisos(base, cita.id);
+
   return obtenerCita(base, cita.id);
 }
 
@@ -342,6 +377,7 @@ module.exports = {
   ErrorAgenda,
   obtenerCita,
   siguienteCodigo,
+  apagarAvisos,
   crearCita,
   reprogramarCita,
   cancelarCita,

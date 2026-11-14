@@ -13,5 +13,13 @@ const base = require('./base');
 const esquema = require('./esquema');
 const disponibilidad = require('./disponibilidad');
 const citas = require('./citas');
+const recordatorios = require('./recordatorios');
 
-module.exports = { ...tiempo, ...base, ...esquema, ...disponibilidad, ...citas };
+module.exports = {
+  ...tiempo,
+  ...base,
+  ...esquema,
+  ...disponibilidad,
+  ...citas,
+  ...recordatorios,
+};
